@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Search</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>YouTube Video Search</h1>
+        <form method="POST" action="/">
+            <div class="input-group">
+                <input type="text" class="form-control" name="search" placeholder="Search for videos" value="{{ search_query }}">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </form>
+
+        {% if search_query %}
+            <h3>Search results for "{{ search_query }}"</h3>
+            {% if videos %}
+                <ul class="list-group mt-3">
+                    {% for video in videos %}
+                        <li class="list-group-item">
+                            <h5><a href="https://www.youtube.com/watch?v={{ video.id.videoId }}" target="_blank">{{ video.snippet.title }}</a></h5>
+                            <p>{{ video.snippet.description }}</p>
+                            <p>Views: {{ video.statistics.viewCount }} | Likes: {{ video.statistics.likeCount }} | Subscribers: {{ video.channelStatistics.subscriberCount }}</p>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No results found. Try searching again.</p>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <script>
+        $(document).ready(function(){
+            $('form').submit(function(e){
+                e.preventDefault();
+                var query = $('input[name="search"]').val();
+                if (query.trim() != "") {
+                    $.ajax({
+                        type: "POST",
+                        url: '/',
+                        data: {search: query},
+                        success: function(response){
+                            location.reload();
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

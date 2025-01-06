@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Search</title>
+    <style>
+        /* Basic styling for the search container */
+        .search-container {
+            position: sticky;
+            top: 0;
+            background-color: #353333;
+            padding: 10px;
+            z-index: 10; /* Keeps the search bar on top of other content */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Additional styling for the page */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        /* Table styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        .load-more-btn {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: auto;
+            align-self: flex-start;
+            flex-wrap: nowrap;
+            
+        }
+
+        .load-more-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* Styling for the search input and button */
+        .search-input {
+            padding: 10px;
+            width: 100%;
+            flex-grow: 1;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            margin-right: 10px
+        }
+
+        .search-button {
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        /* Ensure the buttons are aligned and wrap nicely */
+        .search-bar-wrapper {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            width: 100%;
+            flex-wrap: wrap;
+            flex-direction: column; /* Stack items vertically */
+            align-items: flex-start; /* Align items to the left */
+            gap: 10px; /* Add spacing between elements */
+        }
+
+        /* Styling for the watch button */
+        .watch-btn {
+            padding: 8px 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            min-width: 100px;
+            white-space: nowrap;
+        }
+
+        .watch-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="search-container">
+        <div class="search-bar-wrapper">
+            <form action="/" method="get" style="width: 100%;">
+                <input type="text" name="search" placeholder="Search for YouTube videos" value="{{ search_query }}" class="search-input">
+                <button type="submit" class="search-button">Search</button>
+            </form>
+            {% if next_page_token %}
+                <button class="load-more-btn" id="load-more-btn" data-token="{{ next_page_token }}">Load More</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="content">
+        {% if videos %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Thumbnail</th>
+                        <th>Title</th>
+                        <th>Views</th>
+                        <th>Subscribers</th>
+                        <th>Published</th>
+                        <th>Duration</th>
+                        <th>Views/Subscribers Ratio</th>
+                        <th>Watch Video</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for video in videos %}
+                        <tr>
+                            <td><img src="{{ video['snippet']['thumbnails']['default']['url'] }}" alt="{{ video['snippet']['title'] }}" class="video-thumbnail" style="max-width: 100px; height: auto;"></td>
+                            <td>{{ video['snippet']['title'] }}</td>
+                            <td>{{ video['statistics'].get('viewCount', 'N/A') }}</td>
+                            <td>{{ video['channelStatistics'].get('subscriberCount', 'N/A') }}</td>
+                            <td>{{ video['publishDate'] }}</td>
+                            <td>{{ video['duration'] }}</td>
+                            <td>{{ video['views_to_subscribers_ratio'] }}</td>
+                            <!-- Watch Video button -->
+                            <td><a href="https://www.youtube.com/watch?v={{ video['id']['videoId'] }}" target="_blank" class="watch-btn">Watch Video</a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No results found. Try searching again!</p>
+        {% endif %}
+    </div>
+
+    <script>
+        // JavaScript to handle "Load More" button click
+        document.getElementById('load-more-btn')?.addEventListener('click', function() {
+            var nextPageToken = this.getAttribute('data-token');
+            var searchQuery = "{{ search_query }}"; // The current search query
+
+            fetch('/load_more', {
+                method: 'POST',
+                body: new URLSearchParams({
+                    'search': searchQuery,
+                    'page_token': nextPageToken
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const videoContainer = document.querySelector('.content');
+                const tableBody = videoContainer.querySelector('tbody');
+                data.videos.forEach(video => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><img src="${video.snippet.thumbnails.default.url}" alt="${video.snippet.title}" class="video-thumbnail" style="max-width: 100px; height: auto;"></td>
+                        <td>${video.snippet.title}</td>
+                        <td>${video.statistics.viewCount}</td>
+                        <td>${video.channelStatistics.subscriberCount}</td>
+                        <td>${video.publishDate}</td>
+                        <td>${video.duration}</td>
+                        <td>${video.views_to_subscribers_ratio}</td>
+                        <td><a href="https://www.youtube.com/watch?v=${video.id.videoId}" target="_blank" class="watch-btn">Watch Video</a></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                if (data.next_page_token) {
+                    document.getElementById('load-more-btn').setAttribute('data-token', data.next_page_token);
+                } else {
+                    document.getElementById('load-more-btn').remove(); // Remove "Load More" button if no more pages
+                }
+            });
+        });
+    </script>
+</body>
+</html>

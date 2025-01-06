@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Search Engine</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Search YouTube</h1>
+    <form method="POST" action="/">
+        <input type="text" name="search" placeholder="Search..." value="{{ search_query }}" required>
+        <button type="submit">Search</button>
+    </form>
+    
+    <table>
+        <tr>
+            <th>Video Name</th>
+            <th>Thumbnail</th>
+            <th>Views</th>
+            <th>Likes</th>
+            <th>Comments</th>
+            <th>Channel Subscribers</th>
+            <th>Subscriber to View Ratio</th>
+        </tr>
+        {% for video in videos %}
+        <tr>
+            <td>{{ video.snippet.title }}</td>
+            <td><img src="{{ video.snippet.thumbnails.medium.url }}" alt="Thumbnail"></td>
+            <td>{{ video.statistics.viewCount }}</td>
+            <td>{{ video.statistics.likeCount }}</td>
+            <td>{{ video.statistics.commentCount }}</td>
+            <td>{{ video.channelStatistics.subscriberCount }}</td>
+            <td>
+                {% if video.statistics.viewCount %}
+                    {{ (video.channelStatistics.subscriberCount | int) / (video.statistics.viewCount | int) }}
+                {% else %}
+                    N/A
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    {% if next_page_token %}
+    <button id="loadMoreBtn" data-search="{{ search_query }}" data-page-token="{{ next_page_token }}">Load More</button>
+    {% endif %}
+
+    <script>
+        $(document).ready(function() {
+            $('#loadMoreBtn').click(function() {
+                var nextPageToken = $(this).data('page-token');
+                var searchQuery = $(this).data('search');
+                $.ajax({
+                    url: '/load_more',
+                    method: 'POST',
+                    data: {
+                        search: searchQuery,
+                        page_token: nextPageToken
+                    },
+                    success: function(response) {
+                        var videos = response.videos;
+                        var nextPageToken = response.next_page_token;
+                        
+                        // Append videos to the table
+                        for (var i = 0; i < videos.length; i++) {
+                            var video = videos[i];
+                            var row = `<tr>
+                                            <td>${video.snippet.title}</td>
+                                            <td><img src="${video.snippet.thumbnails.medium.url}" alt="Thumbnail"></td>
+                                            <td>${video.statistics.viewCount}</td>
+                                            <td>${video.statistics.likeCount}</td>
+                                            <td>${video.statistics.commentCount}</td>
+                                            <td>${video.channelStatistics.subscriberCount}</td>
+                                            <td>${(video.channelStatistics.subscriberCount / video.statistics.viewCount).toFixed(6)}</td>
+                                        </tr>`;
+                            $('table').append(row);
+                        }
+
+                        // Update the "Load More" button
+                        if (nextPageToken) {
+                            $('#loadMoreBtn').data('page-token', nextPageToken);
+                        } else {
+                            $('#loadMoreBtn').hide();
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

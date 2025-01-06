@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Search</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>YouTube Video Search</h1>
+
+        <form id="searchForm" method="GET" class="mb-4">
+            <div class="form-group">
+                <label for="search">Search for videos:</label>
+                <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}">
+            </div>
+            <button type="submit" class="btn btn-primary">Search</button>
+        </form>
+
+        <div id="searchResults" class="row">
+            {% if videos %}
+                {% for video in videos %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card">
+                            <img src="{{ video.snippet.thumbnails.medium.url }}" class="card-img-top" alt="{{ video.snippet.title }}">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ video.snippet.title }}</h5>
+                                <p class="card-text"><strong>Channel:</strong> {{ video.snippet.channelTitle }}</p>
+                                <p class="card-text"><strong>Views:</strong> {{ video.statistics.viewCount or 'N/A' }}</p>
+                                <p class="card-text"><strong>Likes:</strong> {{ video.statistics.likeCount or 'N/A' }}</p>
+                                <p class="card-text"><strong>Subscribers:</strong> {{ video.channelStatistics.subscriberCount or 'N/A' }}</p>
+                                <p class="card-text"><strong>Ratio:</strong> {{ video.views_to_subscribers_ratio }}</p>
+                                <p class="card-text"><strong>Published on:</strong> {{ video.publishDate }}</p>
+                                <p class="card-text"><strong>Duration:</strong> <span class="video-duration">{{ video.duration }}</span></p>
+                                <a href="https://www.youtube.com/watch?v={{ video.id.videoId }}" class="btn btn-primary" target="_blank">Watch Video</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No results found. Try searching again.</p>
+            {% endif %}
+        </div>
+
+        {% if next_page_token %}
+            <button id="loadMore" class="btn btn-primary" data-page-token="{{ next_page_token }}">Load More</button>
+        {% endif %}
+    </div>
+
+    <script>
+        // Function to convert ISO 8601 duration to a more readable format
+        function formatDuration(duration) {
+            const match = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+            const hours = match[1] ? match[1] : '0';
+            const minutes = match[2] ? match[2] : '0';
+            const seconds = match[3] ? match[3] : '0';
+            
+            return `${hours}h ${minutes}m ${seconds}s`;
+        }
+
+        $(document).ready(function() {
+            // Convert the video duration once the page is loaded
+            $('.video-duration').each(function() {
+                const duration = $(this).text();
+                const formattedDuration = formatDuration(duration);
+                $(this).text(formattedDuration);
+            });
+
+            // Handle search form submission via AJAX
+            $('#searchForm').submit(function(e) {
+                e.preventDefault(); // Prevent the form from submitting the traditional way
+                var searchQuery = $('#search').val();
+                
+                $.get("/", { search: searchQuery }, function(data) {
+                    // Update the search results with new data
+                    $('#searchResults').html(data);
+                    // Reformat duration for the new results
+                    $('.video-duration').each(function() {
+                        const duration = $(this).text();
+                        const formattedDuration = formatDuration(duration);
+                        $(this).text(formattedDuration);
+                    });
+                });
+            });
+
+            // Handle load more functionality via AJAX
+            $('#loadMore').click(function() {
+                var pageToken = $(this).data('page-token');
+                var searchQuery = $("#search").val();
+                
+                $.post("/load_more", { search: searchQuery, page_token: pageToken }, function(data) {
+                    // Append new videos
+                    data.videos.forEach(function(video) {
+                        var videoCard = `
+                            <div class="col-md-4 mb-4">
+                                <div class="card">
+                                    <img src="${video.snippet.thumbnails.medium.url}" class="card-img-top" alt="${video.snippet.title}">
+                                    <div class="card-body">
+                                        <h5 class="card-title">${video.snippet.title}</h5>
+                                        <p class="card-text"><strong>Channel:</strong> ${video.snippet.channelTitle}</p>
+                                        <p class="card-text"><strong>Views:</strong> ${video.statistics.viewCount || 'N/A'}</p>
+                                        <p class="card-text"><strong>Likes:</strong> ${video.statistics.likeCount || 'N/A'}</p>
+                                        <p class="card-text"><strong>Subscribers:</strong> ${video.channelStatistics.subscriberCount || 'N/A'}</p>
+                                        <p class="card-text"><strong>Ratio:</strong> ${video.views_to_subscribers_ratio}</p>
+                                        <p class="card-text"><strong>Published on:</strong> ${video.publishDate}</p>
+                                        <p class="card-text"><strong>Duration:</strong> <span class="video-duration">${video.duration}</span></p>
+                                        <a href="https://www.youtube.com/watch?v=${video.id.videoId}" class="btn btn-primary" target="_blank">Watch Video</a>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        $('.row').append(videoCard);
+                    });
+
+                    // Reformat duration for the new results
+                    $('.video-duration').each(function() {
+                        const duration = $(this).text();
+                        const formattedDuration = formatDuration(duration);
+                        $(this).text(formattedDuration);
+                    });
+
+                    // Update the next page token
+                    if (data.next_page_token) {
+                        $('#loadMore').data('page-token', data.next_page_token);
+                    } else {
+                        $('#loadMore').remove();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

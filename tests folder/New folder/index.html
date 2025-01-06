@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Search</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>YouTube Video Search</h1>
+        <form method="POST" action="/">
+            <div class="input-group">
+                <input type="text" class="form-control" name="search" placeholder="Search for videos" value="{{ search_query }}">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </form>
+
+        <p>Search Query: {{ search_query }}</p>
+
+        {% if search_query %}
+            <h3>Search results for "{{ search_query }}"</h3>
+            {% if videos %}
+                <ul class="list-group mt-3">
+                    {% for video in videos %}
+                        <li class="list-group-item">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <img src="{{ video.thumbnail }}" alt="Thumbnail" class="img-fluid">
+                                </div>
+                                <div class="col-md-9">
+                                    <h5><a href="https://www.youtube.com/watch?v={{ video.id.videoId }}" target="_blank">{{ video.snippet.title }}</a></h5>
+                                    <p><strong>Channel:</strong> {{ video.snippet.channelTitle }}</p>
+                                    <p><strong>Views:</strong> {{ video.statistics.viewCount }} | <strong>Likes:</strong> {{ video.statistics.likeCount }} | <strong>Subscribers:</strong> {{ video.channelStatistics.subscriberCount }}</p>
+                                    <p><strong>Ratio (Views/Subscribers):</strong> {{ video.ratio | round(2) }}</p>
+                                    <p><strong>Published:</strong> {{ video.published_at }}</p>
+                                    <p><strong>Duration:</strong> {{ video.duration }}</p>
+                                    <a href="https://www.youtube.com/watch?v={{ video.id.videoId }}" class="btn btn-primary" target="_blank">Watch Video</a>
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No results found. Try searching again.</p>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <script>
+        $(document).ready(function(){
+            $('form').submit(function(e){
+                e.preventDefault();
+                var query = $('input[name="search"]').val();
+                if (query.trim() != "") {
+                    $.ajax({
+                        type: "POST",
+                        url: '/',
+                        data: {search: query},
+                        success: function(response){
+                            console.log(response);
+                            location.reload();
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
