@@ -1,11 +1,11 @@
-import requests
 from flask import Flask, render_template, request, jsonify
+import requests
 import re
 
 app = Flask(__name__)
 
 # API Key from Google Cloud
-API_KEY = 'AIzaSyBZ3MAavX-cB4DC9J63Cd7LYIZvaxfJPZE'  # Replace with your API key
+API_KEY = 'AIzaSyBhLWmO_mN-sQXgStNpNG42DC3W8Ak4Fdo'  # Replace with your API key
 SEARCH_URL = 'https://www.googleapis.com/youtube/v3/search'
 VIDEOS_URL = 'https://www.googleapis.com/youtube/v3/videos'
 CHANNELS_URL = 'https://www.googleapis.com/youtube/v3/channels'
@@ -37,7 +37,7 @@ def fetch_videos(query, page_token=None):
         'q': query,
         'type': 'video',
         'key': API_KEY,
-        'maxResults': 12,  # Load 12 videos per request (you can adjust this)
+        'maxResults': 5,  # Load 50 videos per request
         'pageToken': page_token
     }
     response = requests.get(SEARCH_URL, params=params)
@@ -71,7 +71,17 @@ def index():
     page_token = request.args.get('page_token')  # Get page token if any
     videos = []
     next_page_token = None
-    
+
+    # Get filter parameters
+    views_filter = request.args.get('views_filter', '')
+    subscribers_filter = request.args.get('subscribers_filter', '')
+    published_filter = request.args.get('published_filter', '')
+    duration_filter = request.args.get('duration_filter', '')
+    ratio_filter = request.args.get('ratio_filter', '')
+
+    # Debug: Print filter values
+    print(f"Filters - Views: {views_filter}, Subscribers: {subscribers_filter}, Published: {published_filter}, Duration: {duration_filter}, Ratio: {ratio_filter}")
+
     if search_query:
         # Fetch videos based on search query and page token
         data = fetch_videos(search_query, page_token)
@@ -101,15 +111,48 @@ def index():
             video['publishDate'] = video['snippet'].get('publishedAt', 'N/A')
             video['duration'] = format_duration(video['contentDetails'].get('duration', 'PT0S'))  # Default to 0S if no duration is provided
 
+        # Apply filters
+        if views_filter == 'most_views':
+            video_items.sort(key=lambda x: int(x['statistics'].get('viewCount', 0)), reverse=True)
+        elif views_filter == 'least_views':
+            video_items.sort(key=lambda x: int(x['statistics'].get('viewCount', 0)))
+
+        if subscribers_filter == 'most_subs':
+            video_items.sort(key=lambda x: int(x['channelStatistics'].get('subscriberCount', 0)), reverse=True)
+        elif subscribers_filter == 'least_subs':
+            video_items.sort(key=lambda x: int(x['channelStatistics'].get('subscriberCount', 0)))
+
+        if published_filter == 'newest':
+            video_items.sort(key=lambda x: x['publishDate'], reverse=True)
+        elif published_filter == 'oldest':
+            video_items.sort(key=lambda x: x['publishDate'])
+
+        if duration_filter == 'longest':
+            video_items.sort(key=lambda x: x['contentDetails'].get('duration', 'PT0S'), reverse=True)
+        elif duration_filter == 'shortest':
+            video_items.sort(key=lambda x: x['contentDetails'].get('duration', 'PT0S'))
+
+        if ratio_filter == 'highest_ratio':
+            video_items.sort(key=lambda x: x['views_to_subscribers_ratio'] if isinstance(x['views_to_subscribers_ratio'], (int, float)) else 0, reverse=True)
+        elif ratio_filter == 'lowest_ratio':
+            video_items.sort(key=lambda x: x['views_to_subscribers_ratio'] if isinstance(x['views_to_subscribers_ratio'], (int, float)) else 0)
+
         videos = video_items
         next_page_token = data.get('nextPageToken', None)
 
-    return render_template('index.html', videos=videos, search_query=search_query, next_page_token=next_page_token)
+    return render_template('index.html', videos=videos, search_query=search_query, next_page_token=next_page_token,
+                           views_filter=views_filter, subscribers_filter=subscribers_filter,
+                           published_filter=published_filter, duration_filter=duration_filter,
+                           ratio_filter=ratio_filter)
 
 @app.route('/load_more', methods=['POST'])
 def load_more():
     search_query = request.form.get('search')  # Get search query from form
     page_token = request.form.get('page_token')  # Get page token from button
+
+    # Debug: Print search query and page token
+    print(f"Load More - Search Query: {search_query}, Page Token: {page_token}")
+
     data = fetch_videos(search_query, page_token)  # Fetch next set of videos
     video_items = data.get('items', [])
     
@@ -139,6 +182,14 @@ def load_more():
 
     next_page_token = data.get('nextPageToken', None)
     return jsonify({'videos': video_items, 'next_page_token': next_page_token})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+    
+
+@app.route('/storage')
+def storage():
+    return render_template('storage.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

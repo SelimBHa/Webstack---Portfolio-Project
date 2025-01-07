@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Search</title>
-   
     <style>
         /* Basic styling for the search container */
         .search-container {
@@ -208,8 +207,6 @@
                         <option value="lowest_ratio" {% if ratio_filter == 'lowest_ratio' %}selected{% endif %}>Lowest Ratio</option>
                     </select>
                     <button type="submit" class="filter-button">Apply Filters</button>
-                   
-                    <a href="/storage.html" id="view-stored-link">View Stored Videos</a>
                 </div>
             </form>
             {% if next_page_token %}
@@ -273,8 +270,6 @@
                             </select>
                         </th>
                         <th>Watch Video</th>
-                        <th>Action</th> <!-- Store Button Column -->
-
                     </tr>
                 </thead>
                 <tbody>
@@ -289,7 +284,6 @@
                             <td>{{ video['views_to_subscribers_ratio'] }}</td>
                             <!-- Watch Video button -->
                             <td><a href="https://www.youtube.com/watch?v={{ video['id']['videoId'] }}" target="_blank" class="watch-btn">Watch Video</a></td>
-                            <td><button class="store-button">Store</button></td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -297,17 +291,8 @@
         {% else %}
             <p>No results found. Try searching again!</p>
         {% endif %}
+    </div>
 
-        
-    </div>
-   
-   
-    <div id="stored-videos-container">
-        <h2>Stored Videos</h2>
-        <div id="stored-video-cards">
-            <!-- Stored video cards will be inserted here -->
-        </div>
-    </div>
     <script>
         // Show loading spinner when "Load More" is clicked
         document.getElementById('load-more-btn')?.addEventListener('click', function() {
@@ -347,8 +332,6 @@
                         <td>${video.duration}</td>
                         <td>${video.views_to_subscribers_ratio}</td>
                         <td><a href="https://www.youtube.com/watch?v=${video.id.videoId}" target="_blank" class="watch-btn">Watch Video</a></td>
-                        <td><button class="store-button">Store</button></td>  <!-- Add the Store button here -->
-
                     `;
                     tableBody.appendChild(row);
                 });
@@ -430,105 +413,5 @@
             return 0;
         }
     </script>
-
-    <script>
-   document.querySelectorAll('.store-button').forEach(button => {
-    button.addEventListener('click', function() {
-        const row = this.closest('tr');
-        
-        const video = {
-            thumbnail: row.querySelector('img').src,
-            title: row.querySelector('td:nth-child(2)').textContent.trim(),
-            views: row.querySelector('td:nth-child(3)').textContent.trim(),
-            subscribers: row.querySelector('td:nth-child(4)').textContent.trim(),
-            published: row.querySelector('td:nth-child(5)').textContent.trim(),
-            duration: row.querySelector('td:nth-child(6)').textContent.trim(),
-            ratio: row.querySelector('td:nth-child(7)').textContent.trim(),
-            link: row.querySelector('a').href
-        };
-
-        // Store video in localStorage
-        let storedVideos = JSON.parse(localStorage.getItem('storedVideos')) || [];
-        storedVideos.push(video);
-        localStorage.setItem('storedVideos', JSON.stringify(storedVideos));
-
-        // Call the function to display the stored videos immediately
-        displayStoredVideos();
-    });
-});
-
-// Function to display stored videos
-function displayStoredVideos() {
-    const storedVideos = JSON.parse(localStorage.getItem('storedVideos')) || [];
-    const container = document.getElementById('stored-video-cards');
-    
-    // Clear any existing content in the container
-    container.innerHTML = '';
-
-    if (storedVideos.length > 0) {
-        storedVideos.forEach(video => {
-            const videoCard = document.createElement('div');
-            videoCard.classList.add('video-card');
-
-            // Create and append video thumbnail
-            const thumbnail = document.createElement('img');
-            thumbnail.src = video.thumbnail;
-            thumbnail.alt = "Video Thumbnail";
-            videoCard.appendChild(thumbnail);
-
-            // Create and append video title with a link
-            const title = document.createElement('a');
-            title.href = video.link;
-            title.textContent = video.title;
-            title.target = '_blank';
-            videoCard.appendChild(title);
-
-            // Add ratio, publish date, and duration
-            const infoContainer = document.createElement('div');
-            infoContainer.classList.add('video-info');
-
-            // Ratio
-            const ratio = document.createElement('p');
-            ratio.textContent = `Ratio: ${video.ratio || 'N/A'}`;
-            infoContainer.appendChild(ratio);
-
-            // Publish Date
-            const publishDate = document.createElement('p');
-            publishDate.textContent = `Publish Date: ${video.publishDate || 'N/A'}`;
-            infoContainer.appendChild(publishDate);
-
-            // Duration
-            const duration = document.createElement('p');
-            duration.textContent = `Duration: ${video.duration || 'N/A'}`;
-            infoContainer.appendChild(duration);
-
-            const views = document.createElement('p');
-            views.textContent = `views: ${video.views || 'N/A'}`;
-            infoContainer.appendChild(views);
-
-            const subscribers = document.createElement('p');
-            subscribers.textContent = `subscribers: ${video.subscribers || 'N/A'}`;
-            infoContainer.appendChild(subscribers);
-
-
-            // Append the info container to the video card
-            videoCard.appendChild(infoContainer);
-
-            // Append video card to container
-            container.appendChild(videoCard);
-        });
-    } else {
-        container.innerHTML = "<p>No videos stored yet.</p>";
-    }
-}
-
-// Call the function to display stored videos when the page loads
-window.onload = displayStoredVideos;
-
-    </script>
-<div class="contributor">
-    <h1>Contributor: selim ben harzallah</h1>
-</div>
-
 </body>
 </html>
